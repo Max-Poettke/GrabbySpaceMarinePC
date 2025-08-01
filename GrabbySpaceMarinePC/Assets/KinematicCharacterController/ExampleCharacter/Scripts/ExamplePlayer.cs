@@ -12,6 +12,7 @@ namespace KinematicCharacterController.Examples
         public static bool receiveInput = true;
         public ExampleCharacterController Character;
         public ExampleCharacterCamera CharacterCamera;
+        public PlayerCharacterInputs characterInputs;
 
         private const string MouseXInput = "Mouse X";
         private const string MouseYInput = "Mouse Y";
@@ -92,8 +93,8 @@ namespace KinematicCharacterController.Examples
 
         private void HandleCharacterInput()
         {
-            PlayerCharacterInputs characterInputs = new PlayerCharacterInputs();
-
+            
+            characterInputs = new PlayerCharacterInputs();
             // Build the CharacterInputs struct
             characterInputs.MoveAxisForward = Input.GetAxisRaw(VerticalInput);
             characterInputs.MoveAxisRight = Input.GetAxisRaw(HorizontalInput);
