@@ -79,6 +79,11 @@ namespace KinematicCharacterController.Examples
         public float WallJumpUpwardForce = 12f;
         public float WallJumpGracePeriod = 0.5f; // Time after wall jump before re-attachment allowed
         public float CameraInfluenceOnJump = 0.7f; // How much camera direction affects jump (0-1)
+        
+        [Header("Wall Orientation")]
+        public bool AutoFaceWallWhileClimbing = true; // Automatically orient character to face wall
+        public float WallFacingRotationSpeed = 8f; // Speed of rotation toward wall
+        public bool SmoothWallTransitions = true; // Smooth rotation when wall normal changes
 
         [Header("Climbing Stamina")]
         public float MaxStamina = 100f;
@@ -316,7 +321,18 @@ namespace KinematicCharacterController.Examples
                         Vector3 wallUp = Vector3.Cross(wallRight, _wallNormal).normalized;
                         
                         _moveInputVector = (wallRight * inputs.MoveAxisRight + wallUp * inputs.MoveAxisForward);
-                        _lookInputVector = -_wallNormal; // Face away from wall
+                        
+                        // Auto-face wall feature
+                        if (AutoFaceWallWhileClimbing && _isNearClimbableWall)
+                        {
+                            _lookInputVector = -_wallNormal; // Face away from wall (toward camera/player)
+                        }
+                        else
+                        {
+                            // Use camera direction if auto-face is disabled
+                            Vector3 _cameraPlanarDirection = Vector3.ProjectOnPlane(inputs.CameraRotation * Vector3.forward, Motor.CharacterUp).normalized;
+                            _lookInputVector = _cameraPlanarDirection;
+                        }
 
                         // Handle climbing release
                         if (_climbInputReleased || inputs.ClimbRelease)

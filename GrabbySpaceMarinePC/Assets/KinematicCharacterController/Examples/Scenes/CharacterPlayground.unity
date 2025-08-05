@@ -5117,14 +5117,34 @@ MonoBehaviour:
   JumpScalableForwardSpeed: 10
   JumpPreGroundingGraceTime: 0
   JumpPostGroundingGraceTime: 0
-  WallDetectionDistance: 1.5
-  ClimbableAngleThreshold: 60
   ClimbableLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  EnableClimbingDebug: 1
-  DebugWallColor: {r: 0, g: 1, b: 0, a: 1}
+  WallDetectionDistance: 1.5
+  ClimbableAngleThreshold: 60
+  ClimbMoveSpeed: 5
+  WallAttachmentOffset: 0.6
+  ClimbingTransitionSpeed: 10
+  WallJumpForce: 20
+  WallJumpUpwardForce: 12
+  WallJumpGracePeriod: 0.5
+  CameraInfluenceOnJump: 0.7
+  AutoFaceWallWhileClimbing: 1
+  WallFacingRotationSpeed: 8
+  SmoothWallTransitions: 1
+  MaxStamina: 100
+  StaminaDrainRate: 20
+  StaminaRegenRate: 30
+  MinStaminaToStartClimbing: 10
+  MaxWallJumps: 3
+  WallJumpResetTime: 2
+  DebugShowWallDetection: 1
+  DebugShowDetectionRays: 1
+  DebugShowClimbingState: 1
   DebugRayColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  DebugWallColor: {r: 0, g: 1, b: 0, a: 1}
+  DebugClimbingColor: {r: 1, g: 0, b: 1, a: 1}
+  DebugWallJumpColor: {r: 1, g: 0, b: 0, a: 1}
   IgnoredColliders: []
   BonusOrientationMethod: 0
   BonusOrientationSharpness: 10
@@ -20495,6 +20515,114 @@ Transform:
   - {fileID: 1121904405}
   m_Father: {fileID: 758200028}
   m_LocalEulerAnglesHint: {x: 21.609514, y: -2.888647, z: 33.319122}
+--- !u!1 &845709843
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 845709844}
+  - component: {fileID: 845709847}
+  - component: {fileID: 845709846}
+  - component: {fileID: 845709845}
+  m_Layer: 6
+  m_Name: Cube (2)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 4294967295
+  m_IsActive: 1
+--- !u!4 &845709844
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 845709843}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.13052596, y: -0, z: -0, w: 0.99144495}
+  m_LocalPosition: {x: 8.3472, y: 4.81, z: -18.6}
+  m_LocalScale: {x: 20.5168, y: 18.18544, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 897432467}
+  m_LocalEulerAnglesHint: {x: 15.000001, y: 0, z: 0}
+--- !u!23 &845709845
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 845709843}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_RenderingLayerMask: 4294967295
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: cdd98aff9e51e5b4c9f98f2d337d0fb1, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 1
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 0
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!65 &845709846
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 845709843}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!33 &845709847
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 845709843}
+  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!1 &846437952
 GameObject:
   m_ObjectHideFlags: 0
@@ -20591,14 +20719,34 @@ MonoBehaviour:
   JumpScalableForwardSpeed: 10
   JumpPreGroundingGraceTime: 0
   JumpPostGroundingGraceTime: 0
-  WallDetectionDistance: 1.5
-  ClimbableAngleThreshold: 60
   ClimbableLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  EnableClimbingDebug: 1
-  DebugWallColor: {r: 0, g: 1, b: 0, a: 1}
+  WallDetectionDistance: 1.5
+  ClimbableAngleThreshold: 60
+  ClimbMoveSpeed: 5
+  WallAttachmentOffset: 0.6
+  ClimbingTransitionSpeed: 10
+  WallJumpForce: 20
+  WallJumpUpwardForce: 12
+  WallJumpGracePeriod: 0.5
+  CameraInfluenceOnJump: 0.7
+  AutoFaceWallWhileClimbing: 1
+  WallFacingRotationSpeed: 8
+  SmoothWallTransitions: 1
+  MaxStamina: 100
+  StaminaDrainRate: 20
+  StaminaRegenRate: 30
+  MinStaminaToStartClimbing: 10
+  MaxWallJumps: 3
+  WallJumpResetTime: 2
+  DebugShowWallDetection: 1
+  DebugShowDetectionRays: 1
+  DebugShowClimbingState: 1
   DebugRayColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  DebugWallColor: {r: 0, g: 1, b: 0, a: 1}
+  DebugClimbingColor: {r: 1, g: 0, b: 1, a: 1}
+  DebugWallJumpColor: {r: 1, g: 0, b: 0, a: 1}
   IgnoredColliders: []
   BonusOrientationMethod: 0
   BonusOrientationSharpness: 10
@@ -21902,7 +22050,9 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1496059636}
+  - {fileID: 845709844}
   - {fileID: 1705194123}
+  - {fileID: 1224705582}
   m_Father: {fileID: 1417053361}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &899599017
@@ -24418,14 +24568,34 @@ MonoBehaviour:
   JumpScalableForwardSpeed: 0
   JumpPreGroundingGraceTime: 0.1
   JumpPostGroundingGraceTime: 0.1
-  WallDetectionDistance: 1.5
-  ClimbableAngleThreshold: 60
   ClimbableLayers:
     serializedVersion: 2
     m_Bits: 64
-  EnableClimbingDebug: 1
-  DebugWallColor: {r: 0, g: 1, b: 0, a: 1}
+  WallDetectionDistance: 1.5
+  ClimbableAngleThreshold: 60
+  ClimbMoveSpeed: 2
+  WallAttachmentOffset: 0.6
+  ClimbingTransitionSpeed: 10
+  WallJumpForce: 12
+  WallJumpUpwardForce: 12
+  WallJumpGracePeriod: 0.5
+  CameraInfluenceOnJump: 1
+  AutoFaceWallWhileClimbing: 1
+  WallFacingRotationSpeed: 8
+  SmoothWallTransitions: 1
+  MaxStamina: 100
+  StaminaDrainRate: 20
+  StaminaRegenRate: 30
+  MinStaminaToStartClimbing: 10
+  MaxWallJumps: 3
+  WallJumpResetTime: 2
+  DebugShowWallDetection: 1
+  DebugShowDetectionRays: 1
+  DebugShowClimbingState: 1
   DebugRayColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  DebugWallColor: {r: 0, g: 1, b: 0, a: 1}
+  DebugClimbingColor: {r: 1, g: 0, b: 1, a: 1}
+  DebugWallJumpColor: {r: 1, g: 0, b: 0, a: 1}
   IgnoredColliders: []
   BonusOrientationMethod: 1
   BonusOrientationSharpness: 20
@@ -30495,6 +30665,114 @@ Transform:
   - {fileID: 1310992874}
   m_Father: {fileID: 1427609040}
   m_LocalEulerAnglesHint: {x: 31.667002, y: 245.043, z: -153.72801}
+--- !u!1 &1224705581
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1224705582}
+  - component: {fileID: 1224705585}
+  - component: {fileID: 1224705584}
+  - component: {fileID: 1224705583}
+  m_Layer: 6
+  m_Name: Cube (3)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 4294967295
+  m_IsActive: 1
+--- !u!4 &1224705582
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1224705581}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.20533475, y: -0.5880176, z: 0.15755852, w: 0.76632136}
+  m_LocalPosition: {x: 9.45, y: 5.2237, z: -18.389}
+  m_LocalScale: {x: 9, y: 19.4844, z: 2.5646}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 897432467}
+  m_LocalEulerAnglesHint: {x: 30.000002, y: -75, z: 0}
+--- !u!23 &1224705583
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1224705581}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_RenderingLayerMask: 4294967295
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: cdd98aff9e51e5b4c9f98f2d337d0fb1, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 1
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 0
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!65 &1224705584
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1224705581}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!33 &1224705585
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1224705581}
+  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!1 &1230024666
 GameObject:
   m_ObjectHideFlags: 0
@@ -51664,14 +51942,34 @@ MonoBehaviour:
   JumpScalableForwardSpeed: 10
   JumpPreGroundingGraceTime: 0
   JumpPostGroundingGraceTime: 0
-  WallDetectionDistance: 1.5
-  ClimbableAngleThreshold: 60
   ClimbableLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  EnableClimbingDebug: 1
-  DebugWallColor: {r: 0, g: 1, b: 0, a: 1}
+  WallDetectionDistance: 1.5
+  ClimbableAngleThreshold: 60
+  ClimbMoveSpeed: 5
+  WallAttachmentOffset: 0.6
+  ClimbingTransitionSpeed: 10
+  WallJumpForce: 20
+  WallJumpUpwardForce: 12
+  WallJumpGracePeriod: 0.5
+  CameraInfluenceOnJump: 0.7
+  AutoFaceWallWhileClimbing: 1
+  WallFacingRotationSpeed: 8
+  SmoothWallTransitions: 1
+  MaxStamina: 100
+  StaminaDrainRate: 20
+  StaminaRegenRate: 30
+  MinStaminaToStartClimbing: 10
+  MaxWallJumps: 3
+  WallJumpResetTime: 2
+  DebugShowWallDetection: 1
+  DebugShowDetectionRays: 1
+  DebugShowClimbingState: 1
   DebugRayColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  DebugWallColor: {r: 0, g: 1, b: 0, a: 1}
+  DebugClimbingColor: {r: 1, g: 0, b: 1, a: 1}
+  DebugWallJumpColor: {r: 1, g: 0, b: 0, a: 1}
   IgnoredColliders: []
   BonusOrientationMethod: 0
   BonusOrientationSharpness: 10
@@ -52731,14 +53029,34 @@ MonoBehaviour:
   JumpScalableForwardSpeed: 0
   JumpPreGroundingGraceTime: 0.1
   JumpPostGroundingGraceTime: 0.1
-  WallDetectionDistance: 1.5
-  ClimbableAngleThreshold: 60
   ClimbableLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  EnableClimbingDebug: 1
-  DebugWallColor: {r: 0, g: 1, b: 0, a: 1}
+  WallDetectionDistance: 1.5
+  ClimbableAngleThreshold: 60
+  ClimbMoveSpeed: 5
+  WallAttachmentOffset: 0.6
+  ClimbingTransitionSpeed: 10
+  WallJumpForce: 20
+  WallJumpUpwardForce: 12
+  WallJumpGracePeriod: 0.5
+  CameraInfluenceOnJump: 0.7
+  AutoFaceWallWhileClimbing: 1
+  WallFacingRotationSpeed: 8
+  SmoothWallTransitions: 1
+  MaxStamina: 100
+  StaminaDrainRate: 20
+  StaminaRegenRate: 30
+  MinStaminaToStartClimbing: 10
+  MaxWallJumps: 3
+  WallJumpResetTime: 2
+  DebugShowWallDetection: 1
+  DebugShowDetectionRays: 1
+  DebugShowClimbingState: 1
   DebugRayColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  DebugWallColor: {r: 0, g: 1, b: 0, a: 1}
+  DebugClimbingColor: {r: 1, g: 0, b: 1, a: 1}
+  DebugWallJumpColor: {r: 1, g: 0, b: 0, a: 1}
   IgnoredColliders:
   - {fileID: 1569120874}
   - {fileID: 2059747218}
