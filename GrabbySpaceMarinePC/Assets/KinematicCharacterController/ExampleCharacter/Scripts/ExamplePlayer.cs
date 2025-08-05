@@ -102,6 +102,10 @@ namespace KinematicCharacterController.Examples
             characterInputs.JumpDown = Input.GetKeyDown(KeyCode.Space);
             characterInputs.CrouchDown = Input.GetKeyDown(KeyCode.C);
             characterInputs.CrouchUp = Input.GetKeyUp(KeyCode.C);
+            
+            // Climbing inputs
+            characterInputs.ClimbHold = Input.GetKey(KeyCode.LeftShift);
+            characterInputs.ClimbRelease = Input.GetKeyUp(KeyCode.LeftShift);
 
             // Apply inputs to character
             Character.SetInputs(ref characterInputs);

@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using KinematicCharacterController;
@@ -9,6 +9,8 @@ namespace KinematicCharacterController.Examples
     public enum CharacterState
     {
         Default,
+        Climbing,        // Wall climbing state
+        ClimbingJump     // Wall jumping state
     }
 
     public enum OrientationMethod
@@ -25,6 +27,8 @@ namespace KinematicCharacterController.Examples
         public bool JumpDown;
         public bool CrouchDown;
         public bool CrouchUp;
+        public bool ClimbHold;        // Hold to climb
+        public bool ClimbRelease;     // Release climbing
     }
 
     public struct AICharacterInputs
@@ -62,6 +66,39 @@ namespace KinematicCharacterController.Examples
         public float JumpPreGroundingGraceTime = 0f;
         public float JumpPostGroundingGraceTime = 0f;
 
+        [Header("Climbing")]
+        public LayerMask ClimbableLayers = -1;
+        public float WallDetectionDistance = 1f;
+        public float ClimbableAngleThreshold = 45f;
+        public float ClimbMoveSpeed = 2f; // Reduced for jump-focused gameplay
+        public float WallAttachmentOffset = 0.6f;
+        public float ClimbingTransitionSpeed = 10f;
+
+        [Header("Wall Jumping")]
+        public float WallJumpForce = 20f;
+        public float WallJumpUpwardForce = 12f;
+        public float WallJumpGracePeriod = 0.5f; // Time after wall jump before re-attachment allowed
+        public float CameraInfluenceOnJump = 0.7f; // How much camera direction affects jump (0-1)
+
+        [Header("Climbing Stamina")]
+        public float MaxStamina = 100f;
+        public float StaminaDrainRate = 20f; // Stamina per second while climbing
+        public float StaminaRegenRate = 30f; // Stamina per second when not climbing
+        public float MinStaminaToStartClimbing = 10f;
+
+        [Header("Climbing Jump Limits")]
+        public int MaxWallJumps = 3;
+        public float WallJumpResetTime = 2f; // Time after touching ground to reset jump count
+
+        [Header("Climbing Debug")]
+        [SerializeField] private bool DebugShowWallDetection = true;
+        [SerializeField] private bool DebugShowDetectionRays = true;
+        [SerializeField] private bool DebugShowClimbingState = true;
+        [SerializeField] private Color DebugRayColor = Color.yellow;
+        [SerializeField] private Color DebugWallColor = Color.green;
+        [SerializeField] private Color DebugClimbingColor = Color.magenta;
+        [SerializeField] private Color DebugWallJumpColor = Color.red;
+
         [Header("Misc")]
         public List<Collider> IgnoredColliders = new List<Collider>();
         public BonusOrientationMethod BonusOrientationMethod = BonusOrientationMethod.None;
@@ -89,6 +126,32 @@ namespace KinematicCharacterController.Examples
         private Vector3 lastInnerNormal = Vector3.zero;
         private Vector3 lastOuterNormal = Vector3.zero;
 
+        // Climbing state variables
+        private bool _isNearClimbableWall;
+        private Vector3 _wallNormal;
+        private Vector3 _wallHitPoint;
+        private RaycastHit _wallHit;
+        private bool _isTransitioningToClimbing;
+        private Vector3 _targetClimbingPosition;
+        private bool _climbInputPressed;
+        private bool _climbInputReleased;
+
+        // Stamina system variables
+        private float _currentStamina;
+        private bool _hasStaminaToClimb;
+
+        // Jump limit system variables
+        private int _currentWallJumps;
+        private float _timeSinceLastGrounded;
+        private bool _canWallJump;
+
+        // Wall jump grace period system
+        private float _timeSinceWallJump;
+        private bool _isInWallJumpGracePeriod;
+
+        // Wall detection arrays
+        private RaycastHit[] _wallDetectionHits = new RaycastHit[8];
+
         private void Awake()
         {
             // Handle initial state
@@ -96,6 +159,19 @@ namespace KinematicCharacterController.Examples
 
             // Assign the characterController to the motor
             Motor.CharacterController = this;
+            
+            // Initialize stamina system
+            _currentStamina = MaxStamina;
+            _hasStaminaToClimb = true;
+            
+            // Initialize jump limit system
+            _currentWallJumps = 0;
+            _timeSinceLastGrounded = 0f;
+            _canWallJump = true;
+            
+            // Initialize grace period system
+            _timeSinceWallJump = 0f;
+            _isInWallJumpGracePeriod = false;
         }
 
         /// <summary>
@@ -118,6 +194,23 @@ namespace KinematicCharacterController.Examples
             {
                 case CharacterState.Default:
                     {
+                        _isTransitioningToClimbing = false;
+                        break;
+                    }
+                case CharacterState.Climbing:
+                    {
+                        // Calculate target climbing position
+                        _targetClimbingPosition = _wallHitPoint + _wallNormal * WallAttachmentOffset;
+                        _isTransitioningToClimbing = true;
+                        
+                        // Force unground to prevent ground snapping
+                        Motor.ForceUnground();
+                        break;
+                    }
+                case CharacterState.ClimbingJump:
+                    {
+                        // Prepare for enhanced wall jump
+                        Motor.ForceUnground();
                         break;
                     }
             }
@@ -132,6 +225,16 @@ namespace KinematicCharacterController.Examples
             {
                 case CharacterState.Default:
                     {
+                        break;
+                    }
+                case CharacterState.Climbing:
+                    {
+                        _isTransitioningToClimbing = false;
+                        break;
+                    }
+                case CharacterState.ClimbingJump:
+                    {
+                        // Clean up after wall jump
                         break;
                     }
             }
@@ -194,6 +297,78 @@ namespace KinematicCharacterController.Examples
                             _shouldBeCrouching = false;
                         }
 
+                        // Climbing input handling
+                        _climbInputPressed = inputs.ClimbHold;
+                        _climbInputReleased = inputs.ClimbRelease;
+
+                        // Check for climbing state transition (with grace period check)
+                        if (_climbInputPressed && _isNearClimbableWall && !Motor.GroundingStatus.IsStableOnGround && _hasStaminaToClimb && !_isInWallJumpGracePeriod)
+                        {
+                            TransitionToState(CharacterState.Climbing);
+                        }
+
+                        break;
+                    }
+                case CharacterState.Climbing:
+                    {
+                        // Project movement input onto wall plane for climbing movement
+                        Vector3 wallRight = Vector3.Cross(_wallNormal, Motor.CharacterUp).normalized;
+                        Vector3 wallUp = Vector3.Cross(wallRight, _wallNormal).normalized;
+                        
+                        _moveInputVector = (wallRight * inputs.MoveAxisRight + wallUp * inputs.MoveAxisForward);
+                        _lookInputVector = -_wallNormal; // Face away from wall
+
+                        // Handle climbing release
+                        if (_climbInputReleased || inputs.ClimbRelease)
+                        {
+                            TransitionToState(CharacterState.Default);
+                        }
+
+                        // Handle wall jumping
+                        if (inputs.JumpDown)
+                        {
+                            _timeSinceJumpRequested = 0f;
+                            _jumpRequested = true;
+                            if (_canWallJump)
+                            {
+                                _currentWallJumps++;
+                                
+                                // Start grace period to prevent immediate re-attachment
+                                _isInWallJumpGracePeriod = true;
+                                _timeSinceWallJump = 0f;
+                                
+                                TransitionToState(CharacterState.ClimbingJump);
+                            }
+                        }
+
+                        break;
+                    }
+                case CharacterState.ClimbingJump:
+                    {
+                        // During climbing jump, use air movement inputs
+                        _moveInputVector = cameraPlanarRotation * moveInputVector;
+                        _lookInputVector = cameraPlanarDirection;
+                        
+                        // Handle climbing input during wall jump
+                        _climbInputPressed = inputs.ClimbHold;
+                        _climbInputReleased = inputs.ClimbRelease;
+                        
+                        // Only transition back to climbing if:
+                        // 1. Climb input is held
+                        // 2. Character is near a climbable wall
+                        // 3. Character has stamina
+                        // 4. Character is not grounded
+                        // 5. Not in grace period after wall jump
+                        if (_climbInputPressed && _isNearClimbableWall && _hasStaminaToClimb && !Motor.GroundingStatus.IsStableOnGround && !_isInWallJumpGracePeriod)
+                        {
+                            TransitionToState(CharacterState.Climbing);
+                        }
+                        // Otherwise transition to default if not holding climb or conditions not met
+                        else if (!_climbInputPressed || !_isNearClimbableWall || !_hasStaminaToClimb || Motor.GroundingStatus.IsStableOnGround)
+                        {
+                            TransitionToState(CharacterState.Default);
+                        }
+                        
                         break;
                     }
             }
@@ -216,6 +391,170 @@ namespace KinematicCharacterController.Examples
         /// </summary>
         public void BeforeCharacterUpdate(float deltaTime)
         {
+            // Detect climbable walls
+            DetectClimbableWalls();
+            
+            // Update stamina system
+            UpdateStaminaSystem(deltaTime);
+            
+            // Update jump limit system
+            UpdateJumpLimitSystem(deltaTime);
+            
+            // Update grace period system
+            UpdateGracePeriodSystem(deltaTime);
+        }
+
+        /// <summary>
+        /// Detects climbable walls using raycast system
+        /// </summary>
+        private void DetectClimbableWalls()
+        {
+            _isNearClimbableWall = false;
+            
+            // Cast from character center forward
+            Vector3 characterCenter = Motor.TransientPosition;
+            Vector3 forwardDirection = Motor.CharacterForward;
+            
+            // Primary raycast from character center
+            int hitCount = Motor.CharacterCollisionsRaycast(
+                characterCenter,
+                forwardDirection,
+                WallDetectionDistance,
+                out RaycastHit closestHit,
+                _wallDetectionHits,
+                false
+            );
+            
+            if (hitCount > 0)
+            {
+                // Check if the hit surface is climbable
+                if (IsWallClimbable(closestHit))
+                {
+                    _isNearClimbableWall = true;
+                    _wallNormal = closestHit.normal;
+                    _wallHitPoint = closestHit.point;
+                    _wallHit = closestHit;
+                }
+            }
+            
+            // Additional detection points for better coverage
+            if (!_isNearClimbableWall)
+            {
+                // Cast from chest level (slightly higher)
+                Vector3 chestPosition = characterCenter + Motor.CharacterUp * (Motor.Capsule.height * 0.3f);
+                hitCount = Motor.CharacterCollisionsRaycast(
+                    chestPosition,
+                    forwardDirection,
+                    WallDetectionDistance,
+                    out closestHit,
+                    _wallDetectionHits,
+                    false
+                );
+                
+                if (hitCount > 0 && IsWallClimbable(closestHit))
+                {
+                    _isNearClimbableWall = true;
+                    _wallNormal = closestHit.normal;
+                    _wallHitPoint = closestHit.point;
+                    _wallHit = closestHit;
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Determines if a raycast hit represents a climbable wall
+        /// </summary>
+        private bool IsWallClimbable(RaycastHit hit)
+        {
+            // Check if the collider is valid for climbing
+            if (!IsColliderValidForCollisions(hit.collider))
+                return false;
+                
+            // Check if the surface is on climbable layers
+            if ((ClimbableLayers.value & (1 << hit.collider.gameObject.layer)) == 0)
+                return false;
+            
+            // Check surface angle - must be steep enough to be considered a wall
+            float wallAngle = Vector3.Angle(hit.normal, Vector3.up);
+            if (wallAngle < ClimbableAngleThreshold)
+                return false;
+                
+            return true;
+        }
+        
+        /// <summary>
+        /// Updates the stamina system - drains while climbing, regenerates when not climbing
+        /// </summary>
+        private void UpdateStaminaSystem(float deltaTime)
+        {
+            if (CurrentCharacterState == CharacterState.Climbing)
+            {
+                // Drain stamina while climbing
+                _currentStamina -= StaminaDrainRate * deltaTime;
+                _currentStamina = Mathf.Max(0f, _currentStamina);
+                
+                // Check if we still have stamina to climb
+                _hasStaminaToClimb = _currentStamina > 0f;
+                
+                // Force exit climbing if stamina depleted
+                if (!_hasStaminaToClimb)
+                {
+                    TransitionToState(CharacterState.Default);
+                }
+            }
+            else
+            {
+                // Regenerate stamina when not climbing
+                _currentStamina += StaminaRegenRate * deltaTime;
+                _currentStamina = Mathf.Min(MaxStamina, _currentStamina);
+                
+                // Update climbing availability
+                _hasStaminaToClimb = _currentStamina >= MinStaminaToStartClimbing;
+            }
+        }
+        
+        /// <summary>
+        /// Updates the jump limit system - tracks wall jumps and resets when grounded
+        /// </summary>
+        private void UpdateJumpLimitSystem(float deltaTime)
+        {
+            // Track time since last grounded
+            if (Motor.GroundingStatus.IsStableOnGround)
+            {
+                _timeSinceLastGrounded = 0f;
+                
+                // Reset wall jump count when grounded for enough time
+                if (_timeSinceLastGrounded == 0f)
+                {
+                    _currentWallJumps = 0;
+                    _canWallJump = true;
+                }
+            }
+            else
+            {
+                _timeSinceLastGrounded += deltaTime;
+            }
+            
+            // Update wall jump availability
+            _canWallJump = _currentWallJumps < MaxWallJumps;
+        }
+        
+        /// <summary>
+        /// Updates the grace period system - prevents immediate wall re-attachment after jumps
+        /// </summary>
+        private void UpdateGracePeriodSystem(float deltaTime)
+        {
+            if (_isInWallJumpGracePeriod)
+            {
+                _timeSinceWallJump += deltaTime;
+                
+                // End grace period after specified time
+                if (_timeSinceWallJump >= WallJumpGracePeriod)
+                {
+                    _isInWallJumpGracePeriod = false;
+                    _timeSinceWallJump = 0f;
+                }
+            }
         }
 
         /// <summary>
@@ -385,6 +724,76 @@ namespace KinematicCharacterController.Examples
                         }
                         break;
                     }
+                case CharacterState.Climbing:
+                    {
+                        // Wall attachment physics
+                        if (_isTransitioningToClimbing)
+                        {
+                            // Smooth transition to wall attachment position
+                            Vector3 currentPosition = Motor.TransientPosition;
+                            Vector3 targetPosition = _targetClimbingPosition;
+                            
+                            // Calculate velocity needed to reach target position
+                            Vector3 positionDifference = targetPosition - currentPosition;
+                            currentVelocity = positionDifference * ClimbingTransitionSpeed;
+                            
+                            // Check if we're close enough to the wall to complete attachment
+                            if (positionDifference.magnitude < 0.1f)
+                            {
+                                _isTransitioningToClimbing = false;
+                                Motor.SetTransientPosition(targetPosition);
+                                currentVelocity = Vector3.zero;
+                            }
+                        }
+                        else
+                        {
+                            // Normal climbing movement along wall surface
+                            Vector3 climbVelocity = _moveInputVector * ClimbMoveSpeed;
+                            currentVelocity = climbVelocity;
+                        }
+                        
+                        // No gravity while climbing
+                        // No drag while climbing
+                        
+                        // Check if we've lost contact with the wall
+                        if (!_isNearClimbableWall)
+                        {
+                            TransitionToState(CharacterState.Default);
+                        }
+                        
+                        break;
+                    }
+                case CharacterState.ClimbingJump:
+                    {
+                        // Enhanced wall jump physics with camera direction influence
+                        if (_jumpRequested)
+                        {
+                            // Get camera direction projected onto wall plane
+                            Vector3 cameraForward = _lookInputVector.normalized;
+                            Vector3 wallPlaneDirection = Vector3.ProjectOnPlane(cameraForward, _wallNormal).normalized;
+                            
+                            // Calculate horizontal jump direction (blend wall normal with camera direction)
+                            Vector3 wallNormalHorizontal = _wallNormal; // Away from wall
+                            Vector3 horizontalJumpDirection = Vector3.Lerp(wallNormalHorizontal, wallPlaneDirection, CameraInfluenceOnJump).normalized;
+                            
+                            // Combine horizontal direction with upward force
+                            Vector3 finalJumpDirection = horizontalJumpDirection * WallJumpForce + Motor.CharacterUp * WallJumpUpwardForce;
+                            
+                            currentVelocity = finalJumpDirection;
+                            
+                            _jumpRequested = false;
+                            _jumpConsumed = true;
+                            _jumpedThisFrame = true;
+                        }
+                        else
+                        {
+                            // Apply normal air physics after wall jump
+                            currentVelocity += Gravity * deltaTime;
+                            currentVelocity *= (1f / (1f + (Drag * deltaTime)));
+                        }
+                        
+                        break;
+                    }
             }
         }
 
@@ -511,6 +920,163 @@ namespace KinematicCharacterController.Examples
 
         public void OnDiscreteCollisionDetected(Collider hitCollider)
         {
+        }
+
+        /// <summary>
+        /// Visual debugging for wall detection system
+        /// </summary>
+        private void OnDrawGizmos()
+        {
+            if (!DebugShowWallDetection || Motor == null)
+                return;
+
+            Vector3 characterCenter = Motor.TransientPosition;
+            Vector3 forwardDirection = Motor.CharacterForward;
+            Vector3 chestPosition = characterCenter + Motor.CharacterUp * (Motor.Capsule.height * 0.3f);
+
+            // Draw detection rays
+            if (DebugShowDetectionRays)
+            {
+                Gizmos.color = DebugRayColor;
+                Gizmos.DrawRay(characterCenter, forwardDirection * WallDetectionDistance);
+                Gizmos.DrawRay(chestPosition, forwardDirection * WallDetectionDistance);
+            }
+
+            // Draw wall detection results
+            if (_isNearClimbableWall)
+            {
+                // Draw wall hit point and normal
+                Gizmos.color = DebugWallColor;
+                Gizmos.DrawWireSphere(_wallHitPoint, 0.1f);
+                Gizmos.DrawRay(_wallHitPoint, _wallNormal * 1f);
+                
+                // Draw wall surface indicator
+                Gizmos.color = Color.Lerp(DebugWallColor, Color.white, 0.3f);
+                Vector3 wallRight = Vector3.Cross(_wallNormal, Motor.CharacterUp).normalized;
+                Vector3 wallUp = Vector3.Cross(wallRight, _wallNormal).normalized;
+                
+                // Draw a small quad to represent the climbable wall surface
+                Vector3 quadCenter = _wallHitPoint + _wallNormal * 0.01f;
+                Vector3[] quadCorners = new Vector3[4]
+                {
+                    quadCenter + wallRight * 0.5f + wallUp * 0.5f,
+                    quadCenter - wallRight * 0.5f + wallUp * 0.5f,
+                    quadCenter - wallRight * 0.5f - wallUp * 0.5f,
+                    quadCenter + wallRight * 0.5f - wallUp * 0.5f
+                };
+                
+                for (int i = 0; i < 4; i++)
+                {
+                    Gizmos.DrawLine(quadCorners[i], quadCorners[(i + 1) % 4]);
+                }
+                
+                // Draw climbing readiness indicator (now includes stamina and grace period check)
+                bool canStartClimbing = _isNearClimbableWall && !Motor.GroundingStatus.IsStableOnGround && _hasStaminaToClimb && !_isInWallJumpGracePeriod;
+                Gizmos.color = canStartClimbing ? Color.green : (_isInWallJumpGracePeriod ? Color.yellow : Color.red);
+                Gizmos.DrawWireCube(characterCenter + Vector3.up * 2.5f, Vector3.one * 0.2f);
+                
+                // Draw grace period indicator
+                if (_isInWallJumpGracePeriod && DebugShowClimbingState)
+                {
+                    float gracePeriodPercentage = _timeSinceWallJump / WallJumpGracePeriod;
+                    Gizmos.color = Color.Lerp(Color.yellow, Color.green, gracePeriodPercentage);
+                    Vector3 gracePeriodBarStart = characterCenter + Vector3.up * 2.2f + Vector3.left * 0.3f;
+                    Vector3 gracePeriodBarEnd = gracePeriodBarStart + Vector3.right * (gracePeriodPercentage * 0.6f);
+                    Gizmos.DrawLine(gracePeriodBarStart, gracePeriodBarEnd);
+                    
+                    // Draw grace period bar outline
+                    Gizmos.color = Color.white;
+                    Vector3 gracePeriodBarOutlineEnd = gracePeriodBarStart + Vector3.right * 0.6f;
+                    Gizmos.DrawLine(gracePeriodBarStart, gracePeriodBarOutlineEnd);
+                }
+                
+                // Draw stamina indicator
+                if (DebugShowClimbingState)
+                {
+                    float staminaPercentage = _currentStamina / MaxStamina;
+                    Gizmos.color = Color.Lerp(Color.red, Color.green, staminaPercentage);
+                    Vector3 staminaBarStart = characterCenter + Vector3.up * 2.8f + Vector3.left * 0.5f;
+                    Vector3 staminaBarEnd = staminaBarStart + Vector3.right * (staminaPercentage * 1f);
+                    Gizmos.DrawLine(staminaBarStart, staminaBarEnd);
+                    
+                    // Draw stamina bar outline
+                    Gizmos.color = Color.white;
+                    Vector3 staminaBarOutlineEnd = staminaBarStart + Vector3.right * 1f;
+                    Gizmos.DrawLine(staminaBarStart, staminaBarOutlineEnd);
+                    
+                    // Draw jump count indicator
+                    for (int i = 0; i < MaxWallJumps; i++)
+                    {
+                        Vector3 jumpIndicatorPos = characterCenter + Vector3.up * 3.2f + Vector3.right * (i * 0.3f - 0.3f);
+                        Gizmos.color = i < _currentWallJumps ? Color.red : Color.green;
+                        Gizmos.DrawWireCube(jumpIndicatorPos, Vector3.one * 0.1f);
+                    }
+                }
+            }
+            
+            // Draw character detection bounds
+            Gizmos.color = Color.cyan;
+            Gizmos.DrawWireSphere(characterCenter, 0.05f);
+            Gizmos.DrawWireSphere(chestPosition, 0.05f);
+            
+            // Draw climbing state indicators
+            if (DebugShowClimbingState)
+            {
+                if (CurrentCharacterState == CharacterState.Climbing)
+                {
+                    // Draw climbing state indicator
+                    Gizmos.color = DebugClimbingColor;
+                    Gizmos.DrawWireCube(characterCenter + Vector3.up * 3f, Vector3.one * 0.3f);
+                    
+                    // Draw target climbing position
+                    if (_isTransitioningToClimbing)
+                    {
+                        Gizmos.color = DebugRayColor;
+                        Gizmos.DrawWireSphere(_targetClimbingPosition, 0.15f);
+                        Gizmos.DrawLine(characterCenter, _targetClimbingPosition);
+                    }
+                    
+                    // Draw climbing movement direction
+                    if (_moveInputVector.sqrMagnitude > 0f)
+                    {
+                        Gizmos.color = Color.cyan;
+                        Vector3 climbMovement = _moveInputVector * 0.5f;
+                        Gizmos.DrawRay(characterCenter, climbMovement);
+                    }
+                }
+                else if (CurrentCharacterState == CharacterState.ClimbingJump)
+                {
+                    // Draw wall jump state indicator
+                    Gizmos.color = DebugWallJumpColor;
+                    Gizmos.DrawWireCube(characterCenter + Vector3.up * 3f, Vector3.one * 0.3f);
+                    
+                    // Draw wall jump direction
+                    Vector3 wallJumpDirection = (_wallNormal * 15f + Motor.CharacterUp * 10f).normalized;
+                    Gizmos.color = Color.red;
+                    Gizmos.DrawRay(characterCenter, wallJumpDirection * 2f);
+                }
+            }
+            
+            // Draw state information text (visible in Scene view)
+            if (DebugShowClimbingState)
+            {
+                Vector3 textPosition = characterCenter + Vector3.up * 3.5f;
+                string stateText = $"State: {CurrentCharacterState}";
+                if (CurrentCharacterState == CharacterState.Climbing)
+                {
+                    stateText += $"\nTransitioning: {_isTransitioningToClimbing}";
+                    stateText += $"\nNear Wall: {_isNearClimbableWall}";
+                }
+                stateText += $"\nStamina: {_currentStamina:F1}/{MaxStamina}";
+                stateText += $"\nWall Jumps: {_currentWallJumps}/{MaxWallJumps}";
+                stateText += $"\nCan Climb: {_hasStaminaToClimb}";
+                stateText += $"\nCan Wall Jump: {_canWallJump}";
+                stateText += $"\nGrace Period: {(_isInWallJumpGracePeriod ? $"{_timeSinceWallJump:F1}s/{WallJumpGracePeriod:F1}s" : "None")}";
+                
+                // Note: Unity doesn't have built-in text rendering in Gizmos
+                // This is a placeholder for where you could add a custom text rendering solution
+                // For now, we rely on the visual indicators above
+            }
         }
     }
 }

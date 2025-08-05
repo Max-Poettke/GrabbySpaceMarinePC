@@ -127,7 +127,7 @@ public class ClimbingLogic : MonoBehaviour
         RaycastHit hit;
         if(Physics.Raycast(frontOfPlayer.position, frontOfPlayer.forward, out hit, armLength))
         {
-            Debug.Log(hit.transform.tag);
+            Debug.Log(hit.transform.name);
             if(!hit.transform.CompareTag("Climbable"))
             {
                 return;
